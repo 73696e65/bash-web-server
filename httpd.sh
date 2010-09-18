@@ -104,6 +104,7 @@ response() {
 		else
 			echo -en "Content-Length: $(cat "$path" | wc -c)\r\n";
 			echo -en "Content-Type: $mime\r\n\r\n";
+			cat "$path" # FIXME: directory traversal?
 		fi
 		;;
 
@@ -134,6 +135,18 @@ Content-Type:text/html; charset=utf-8
 </body></html>
 404
 		;;
+	*)
+cat << 500
+Content-Type:text/html; charset=utf-8
+
+<html><head>
+<title>500 Server error</title>
+</head><body>
+<h1>Server error</h1>
+<p>Method not implemented or other misconfiguration occured.</p>
+</body></html>
+500
+	;;
 	esac
 }
 
@@ -165,5 +178,6 @@ case "$(upperx $method)" in
   ;;
 
   *)
+   response 500 "Server error" ""
   ;;
 esac
