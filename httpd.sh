@@ -15,7 +15,7 @@ log() {
 }
 
 process_alive() {
-	ps -A | grep "^$1 " &>/dev/null
+	ps -o pid= --pid $1 &> /dev/null
 }
 
 kill_tree() {
