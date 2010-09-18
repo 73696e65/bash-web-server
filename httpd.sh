@@ -64,6 +64,10 @@ get_mime() {
 	echo $mime
 }
 
+add_header() {
+    echo "$1" | egrep -i "^$2:" &>/dev/null || echo -en "$2: $3\r\n"
+}
+
 response() {
 	code="$1"
         path="$(echo $2 | sed 's#%20#\ #g')"
@@ -93,10 +97,8 @@ response() {
 				    body="$response"
 			    fi
 
-			    echo "$headers" | egrep -i "^Content-Type:" &>/dev/null \
-				    || echo -en "Content-Type: text/plain; charset=UTF-8\r\n"
-			    echo "$headers" | egrep -i "^Content-Length:" &>/dev/null \
-				    || echo -en "Content-Length: $(echo "$body" | wc -c)\r\n"
+			    add_header "$headers" "Content-Type"   "text/plain; charset=UTF-8"
+			    add_header "$headers" "Content-Length" "$(echo "$body" | wc -c)"
 
 			    echo "$headers"
 			    echo "$body"
