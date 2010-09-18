@@ -82,17 +82,9 @@ response() {
                     unset IFS
                     echo "</th></tr></table>"
                 else
-                    if [ $mime = "text/x-shellscript" -a $cgi_bash = "true" -a -x "$path" ]; then
-                        echo -e "Content-Type: text/html; charset=utf-8\n" 
-                        fork_with_timeout "$path" && echo -e "\r"
-                    else
-                        if [ $mime = "text/x-perl" -a $cgi_perl = "true" -a -x "$path" ]; then 
-                            echo -e "Content-Type: text/html; charset=utf-8\n" 
-                            fork_with_timeout "$path" && echo -e "\r"
-                        else
-                            echo -e "Content-Type: $mime; charset=utf-8\n" && cat "$path" && echo -e "\r"
-                        fi
-                    fi
+		    if [ -x "$path" ]; then
+			    fork_with_timeout "$path"
+		    fi
                 fi
 		;;
 
