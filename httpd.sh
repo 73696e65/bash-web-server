@@ -1,7 +1,6 @@
 #!/bin/bash 
 
 # usage: ncat -l 8080 -e ./httpd.sh
-# mala zmena
 
 ### global variables that contain the configuration options ###
 basedir=$PWD/webroot
@@ -10,18 +9,30 @@ cgi_perl="true"
 timeout=4
 ###############################################################
 
+wrapper_alive() {
+	[ -e "/tmp/httpd-pidfile-$1" ]
+}
+
 launch_killer_process() {
     pid=$1
-    sleep $timeout
-    if [ -e "/tmp/httpd-pidfile-$pid" ]; then
-        kill -9 $pid
-    fi
+    iters=0
+    while wrapper_alive $pid; do 
+	    echo "killer waiting... $iters"
+	    if [ $iters -ge $((5*timeout)) ]; then
+		    kill $pid
+		    echo "Process killed."
+		    break
+	    fi
+	    sleep 0.2
+	    iters=$((iters+1))
+    done
 }
 
 fork_with_timeout() {
     cmd="$@"
     ./wrapper.sh "$cmd" &
-    launch_killer_process $! &
+    pid=$!
+    launch_killer_process $pid &
 }
 
 upperx() {
