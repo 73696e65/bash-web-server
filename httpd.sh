@@ -85,8 +85,7 @@ response() {
                     done
                     unset IFS
                     echo "</th></tr></table>"
-                else
-		    if [ -x "$path" ]; then
+	       elif [ -x "$path" ] && [[ "$path" =~ \.cgi$ ]]; then
 			    response="$(fork_with_timeout "$path")"
 			    if echo "$clean" | egrep '^\r*$' &>/dev/null; then
 				    # log "Headers found."
@@ -102,8 +101,10 @@ response() {
 
 			    echo "$headers"
 			    echo "$body"
-		    fi
-                fi
+		else
+			echo -en "Content-Length: $(cat "$path" | wc -c)\r\n";
+			echo -en "Content-Type: $mime\r\n\r\n";
+		fi
 		;;
 
 		403*)
