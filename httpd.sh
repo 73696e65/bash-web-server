@@ -83,7 +83,15 @@ response() {
                     echo "</th></tr></table>"
                 else
 		    if [ -x "$path" ]; then
-			    fork_with_timeout "$path"
+			    response=$(fork_with_timeout "$path")
+			    if echo "$response" | tr -d '\r' | grep '^$' &>/dev/null; then
+				    # log "Headers found."
+				    echo -n "$response"
+			    else
+				    # log "No headers found."
+				    echo -en "Content-Type: text/plain; charset=UTF-8\r\n\r\n"
+				    echo -n "$response"
+			    fi
 		    fi
                 fi
 		;;
