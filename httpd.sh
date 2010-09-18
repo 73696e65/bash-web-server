@@ -14,64 +14,33 @@ log() {
 	echo $@ >> /tmp/httpd.log
 }
 
-cleanup() {
-    log "Cleaning up $pidfile, killing $(cat $pidfile)"
-    kill -9 $(cat $pidfile) 2> /dev/null
-    rm -f $pidfile
-    exit 0
+process_alive() {
+	ps -A | grep "^$1 " &>/dev/null
 }
 
-wrapper() {
-	pidfile=/tmp/httpd-pidfile-$$
-	log "launching wrapper $pidfile"
-
-	trap cleanup HUP
-	trap cleanup TERM
-	trap cleanup CHLD
-	trap cleanup QUIT
-	trap cleanup ALRM
-
-	touch $pidfile
-	$@ &
-	cpid=$!
-	log "CGI script PID: $cpid (written to $pidfile)"
-	echo $cpid > $pidfile
-	wait $cpid
-
-	cleanup
+kill_tree() {
+	for child in $(ps -o pid= --ppid $1); do
+		kill_tree $child
+	done
+	kill -9 $1
 }
 
-wrapper_alive() {
-	if [ -e "/tmp/httpd-pidfile-$1" ]; then
-		return 0
-	else
-		return 1
-	fi
-}
-
-launch_killer_process() {
-    pid=$1
+fork_with_timeout() {
+    log "running $@"
     iters=0
-    log "Launching killer process (pid $$) on $pid"
-    while wrapper_alive $pid; do 
+    $@ &
+    pid=$!
+    log "forked CGI: $pid, waiting"
+    while process_alive $pid; do 
 	    if [ $iters -ge $((5*timeout)) ]; then
-		    log "Killing"
-		    kill -SIGHUP $pid
-		    echo "Process killed."
+		    log "Killing $pid"
+		    kill_tree $pid
 		    break
 	    fi
 	    sleep 0.2
 	    iters=$((iters+1))
     done
     log "Killer process on $pid exiting"
-}
-
-fork_with_timeout() {
-    wrapper $@ &
-    pid=$!
-    log "wrapper pid is $pid"
-    touch "/tmp/httpd-pidfile-$pid"
-    launch_killer_process $pid &
 }
 
 upperx() {
