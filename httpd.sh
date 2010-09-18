@@ -1,6 +1,7 @@
 #!/bin/bash 
 
 # usage: ncat -l 8080 -e ./httpd.sh
+# mala zmena
 
 ### global variables that contain the configuration options ###
 basedir=$PWD/webroot
