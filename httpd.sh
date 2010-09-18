@@ -12,16 +12,15 @@ timeout=4
 
 launch_killer_process() {
     pid=$1
-    echo " from launch_killer_process /tmp/pidfile-$$"
     sleep $timeout
-    if [ -e "/tmp/pidfile-$$" ]; then
+    if [ -e "/tmp/httpd-pidfile-$pid" ]; then
         kill -9 $pid
     fi
 }
 
 fork_with_timeout() {
     cmd="$@"
-    ./wrapper.sh /tmp/pidfile-$$ "$cmd" &
+    ./wrapper.sh "$cmd" &
     launch_killer_process $! &
 }
 

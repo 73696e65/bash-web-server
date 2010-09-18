@@ -1,8 +1,7 @@
 #!/bin/bash
 
-pidfile=$1
+pidfile=/tmp/httpd-pidfile-$$
 echo "xx $pidfile"
-shift
 
 cleanup() {
     kill -9 $(cat $pidfile)
@@ -20,11 +19,11 @@ trap cleanup QUIT
 
 touch $pidfile
 $@ &
-echo $! >> $pidfile
+cpid=$!
+echo $cpid >> $pidfile
 
-echo "last: $!"
-while [ "process_alive $!" ]; do sleep 1; done
+echo "last: $cpid"
+while [ "process_alive $cpid" ]; do sleep 1; done
 
-echo "volam cleanup"
 echo "volam cleanup"
 cleanup
