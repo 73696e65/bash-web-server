@@ -83,15 +83,23 @@ response() {
                     echo "</th></tr></table>"
                 else
 		    if [ -x "$path" ]; then
-			    response=$(fork_with_timeout "$path")
-			    if echo "$response" | tr -d '\r' | grep '^$' &>/dev/null; then
+			    response="$(fork_with_timeout "$path")"
+			    if echo "$clean" | egrep '^\r*$' &>/dev/null; then
 				    # log "Headers found."
-				    echo -n "$response"
+				    headers="$(echo "$response" | sed -rn '1,/^\r*$/p')"
+				    body="$(echo "$response" | sed -r '1,/^\r*$/d')"
 			    else
 				    # log "No headers found."
-				    echo -en "Content-Type: text/plain; charset=UTF-8\r\n\r\n"
-				    echo -n "$response"
+				    body="$response"
 			    fi
+
+			    echo "$headers" | egrep -i "^Content-Type:" &>/dev/null \
+				    || echo -en "Content-Type: text/plain; charset=UTF-8\r\n"
+			    echo "$headers" | egrep -i "^Content-Length:" &>/dev/null \
+				    || echo -en "Content-Length: $(echo "$body" | wc -c)\r\n"
+
+			    echo "$headers"
+			    echo "$body"
 		    fi
                 fi
 		;;
