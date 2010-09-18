@@ -9,29 +9,68 @@ cgi_perl="true"
 timeout=4
 ###############################################################
 
+log() {
+	# use tail -f /tmp/httpd.log
+	echo $@ >> /tmp/httpd.log
+}
+
+cleanup() {
+    log "Cleaning up $pidfile, killing $(cat $pidfile)"
+    kill -9 $(cat $pidfile) 2> /dev/null
+    rm -f $pidfile
+    exit 0
+}
+
+wrapper() {
+	pidfile=/tmp/httpd-pidfile-$$
+	log "launching wrapper $pidfile"
+
+	trap cleanup HUP
+	trap cleanup TERM
+	trap cleanup CHLD
+	trap cleanup QUIT
+	trap cleanup ALRM
+
+	touch $pidfile
+	$@ &
+	cpid=$!
+	log "CGI script PID: $cpid (written to $pidfile)"
+	echo $cpid > $pidfile
+	wait $cpid
+
+	cleanup
+}
+
 wrapper_alive() {
-	[ -e "/tmp/httpd-pidfile-$1" ]
+	if [ -e "/tmp/httpd-pidfile-$1" ]; then
+		return 0
+	else
+		return 1
+	fi
 }
 
 launch_killer_process() {
     pid=$1
     iters=0
+    log "Launching killer process (pid $$) on $pid"
     while wrapper_alive $pid; do 
-	    echo "killer waiting... $iters"
 	    if [ $iters -ge $((5*timeout)) ]; then
-		    kill $pid
+		    log "Killing"
+		    kill -SIGHUP $pid
 		    echo "Process killed."
 		    break
 	    fi
 	    sleep 0.2
 	    iters=$((iters+1))
     done
+    log "Killer process on $pid exiting"
 }
 
 fork_with_timeout() {
-    cmd="$@"
-    ./wrapper.sh "$cmd" &
+    wrapper $@ &
     pid=$!
+    log "wrapper pid is $pid"
+    touch "/tmp/httpd-pidfile-$pid"
     launch_killer_process $pid &
 }
 
