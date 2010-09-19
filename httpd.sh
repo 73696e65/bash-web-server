@@ -151,7 +151,6 @@ Content-Type:text/html; charset=utf-8
 }
 
 read method url http_version
-read # new line
 
 case "$(upperx $http_version)" in
   HTTP/1.0)
