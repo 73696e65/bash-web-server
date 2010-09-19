@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash 
 
 # usage: ncat -l 8080 -e ./httpd.sh
 
@@ -174,14 +174,22 @@ Connection: close
 	esac
 }
 
-encode_url() {
-	raw="$1"
-        # XXX TODO
+url_escape() {
+ encoded=$(
+   echo "$1" | hexdump -v -e '1/1 "%02x\t"' -e '1/1 "%_c\n"' |
+   LANG=C awk '
+     $1 == "20"                     { printf("%s",   "+");  next } 
+     $1 ~  /0[adAD]/                {                       next } 
+     $2 ~  /^[_a-zA-Z0-9.*()\/-]$/  { printf("%s",   $2);   next }
+                                    { printf("%%%s", $1)         }
+   ')
+  echo "$encoded"
 }
 
 read method rest # url + http version
 http_version=$(echo "$rest" | awk '{print $NF}')
-url=$(echo "$rest" | sed "s# $http_version\$##")
+rawurl=$(echo "$rest" | sed "s# $http_version\$##")
+url=$(url_escape "$rawurl")
 
 host="?"
 while read header; do
