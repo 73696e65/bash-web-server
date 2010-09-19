@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 
 # usage: ncat -l 8080 -e ./httpd.sh
 
@@ -67,22 +67,19 @@ add_header() {
 }
 
 list_dir() {
-set -x
                     echo "<table><tr><th>"
                     IFS=$(echo -en "\n\b")
-                    #for file in $(ls -1aF "$path" | grep -v "^./$" | sed 's#\*##g'); do
                     for file in $(ls -1a "$path" | grep -v "^\.$"); do
                         [ -d "$path/$file" ] && file="$file/"
                         echo "<tr><td valign="top"><a href=\""$file"\">"$file"</a></td>"
                     done
                     unset IFS
                     echo "</th></tr></table>"
-set +x
 }
 
 response() {
 	code="$1"
-        path="$(echo $2 | sed 's#%20#\ #g')"
+        path="$(echo $2 | sed -e 's#\ #%20#g')" # -e 's#%3[dD]#<#g' -e 's#%3[eE]#>#g')"
         echo "$(upperx $http_version) $code";
 	
 	case "$code" in
@@ -177,7 +174,15 @@ Connection: close
 	esac
 }
 
-read method url http_version
+encode_url() {
+	raw="$1"
+        # XXX TODO
+}
+
+read method rest # url + http version
+http_version=$(echo "$rest" | awk '{print $NF}')
+url=$(echo "$rest" | sed "s# $http_version\$##")
+
 host="?"
 while read header; do
 	header="$(echo "$header" | tr -d '\r')"
