@@ -85,30 +85,31 @@ response() {
 		200*)
 	        mime=$(get_mime "$path")
 		if [ -d "$path" ]; then 
-		    body=$(list_dir "$path")
-	            echo -en "Content-Type: $mime; charset=utf-8\r\n"
+                    tmpfile=$(mktemp)
+                    echo $(list_dir "$path") > "$tmpfile"
+		    echo -en "Content-Type: $mime; charset=utf-8\r\n"
 		    echo -en "Connection: close\r\n"
-		    echo -en "Content-Length: $(echo "$body" | wc -c)\r\n\r\n"
-		    echo "$body"
+		    echo -en "Content-Length: $(wc -c < "$tmpfile")\r\n\r\n"
+		    cat "$tmpfile" && rm -f "$tmpfile"
 	       elif [ -x "$path" ] && [[ "$path" =~ \.cgi$ ]]; then
-			    response="$(fork_with_timeout "$path")"
-			    if echo "$response" | tr -d '\r' | egrep '^$' &>/dev/null; then
+                            tmpfile=$(mktemp)
+			    echo "$(fork_with_timeout "$path")" > "$tmpfile"
+			    if cat "$tmpfile" | tr -d '\r' | egrep '^$' &>/dev/null; then
 				    log "Headers found."
-				    headers="$(echo "$response" | sed -rn '1,/^\r*$/p')"
-				    body="$(echo "$response" | sed -r '1,/^\r*$/d')"
+				    headers="$(cat "$tmpfile" | sed -rn '1,/^\r*$/p')"
+				    sed -ri '1,/^\r*$/d' "$tmpfile"
 			    else
 				    log "No headers found."
-				    body="$response"
 			    fi
 
 			    add_header "$headers" "Content-Type"   "text/plain; charset=UTF-8"
-			    add_header "$headers" "Content-Length" "$(echo "$body" | wc -c)"
+			    add_header "$headers" "Content-Length" "$(wc -c < "$tmpfile")"
 			    add_header "$headers" "Connection" "close"
 
 			    echo "$headers"
-			    echo "$body"
+			    cat $tmpfile && rm -f "$tmpfile"
 		else
-			echo -en "Content-Length: $(cat "$path" | wc -c)\r\n";
+			echo -en "Content-Length: $(wc -c < "$tmpfile")\r\n";
 			echo -en "Connection: close\r\n"
 			echo -en "Content-Type: $mime\r\n\r\n";
 			cat "$path" # FIXME: directory traversal?
