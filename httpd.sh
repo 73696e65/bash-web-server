@@ -89,6 +89,7 @@ response() {
 		if [ -d "$path" ]; then 
 		    body=$(list_dir "$path")
 	            echo -en "Content-Type: $mime; charset=utf-8\r\n"
+		    echo -en "Connection: close\r\n"
 		    echo -en "Content-Length: $(echo "$body" | wc -c)\r\n\r\n"
 		    echo "$body"
 	       elif [ -x "$path" ] && [[ "$path" =~ \.cgi$ ]]; then
@@ -104,11 +105,13 @@ response() {
 
 			    add_header "$headers" "Content-Type"   "text/plain; charset=UTF-8"
 			    add_header "$headers" "Content-Length" "$(echo "$body" | wc -c)"
+			    add_header "$headers" "Connection" "close"
 
 			    echo "$headers"
 			    echo "$body"
 		else
 			echo -en "Content-Length: $(cat "$path" | wc -c)\r\n";
+			echo -en "Connection: close\r\n"
 			echo -en "Content-Type: $mime\r\n\r\n";
 			cat "$path" # FIXME: directory traversal?
 		fi
@@ -118,6 +121,7 @@ response() {
 ### 403 forbidden ###
 cat << 403
 Content-Type:text/html; charset=utf-8
+Connection: close
 
 <html><head>
 <title>403 Forbidden</title>
@@ -132,6 +136,7 @@ on this server.</p>
 ### 404 not found ###
 cat << 404
 Content-Type:text/html; charset=utf-8
+Connection: close
 
 <html><head>
 <title>404 Not Found</title>
@@ -144,6 +149,7 @@ Content-Type:text/html; charset=utf-8
 	*)
 cat << 500
 Content-Type:text/html; charset=utf-8
+Connection: close
 
 <html><head>
 <title>500 Server error</title>
