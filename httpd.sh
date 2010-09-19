@@ -4,8 +4,6 @@
 
 ### global variables that contain the configuration options ###
 basedir=$PWD/webroot
-cgi_bash="true"
-cgi_perl="true"
 timeout=4
 ###############################################################
 
@@ -146,7 +144,19 @@ Connection: close
 </body></html>
 404
 		;;
-	*)
+                501*)
+# 501 Not Implemented
+cat << 501
+Content-Type:text/html; charset=utf-8
+<html><head>
+<title>501 Not implemented</title>
+</head><body>
+<h1>Not Implemented</h1>
+<p>Method not implemented or other misconfiguration occured.</p>
+</body></html>
+501
+                ;;  
+	        *)
 cat << 500
 Content-Type:text/html; charset=utf-8
 Connection: close
@@ -180,7 +190,7 @@ case "$(upperx $http_version)" in
   ;;
 
   *)
-    echo "Method not implemented" 
+    response 501 "Not Implemented" ""
     exit 1
   ;;
 esac
@@ -191,8 +201,7 @@ case "$(upperx $method)" in
   ;;
 
   POST) 
-    echo "POST method not implemented yet"
-    exit 1
+    response 501 "Not Implemented" ""
   ;;
 
   *)
