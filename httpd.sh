@@ -93,12 +93,12 @@ response() {
 		    echo "$body"
 	       elif [ -x "$path" ] && [[ "$path" =~ \.cgi$ ]]; then
 			    response="$(fork_with_timeout "$path")"
-			    if echo "$response" | egrep '^\r*$' &>/dev/null; then
-				    # log "Headers found."
+			    if echo "$response" | tr -d '\r' | egrep '^$' &>/dev/null; then
+				    log "Headers found."
 				    headers="$(echo "$response" | sed -rn '1,/^\r*$/p')"
 				    body="$(echo "$response" | sed -r '1,/^\r*$/d')"
 			    else
-				    # log "No headers found."
+				    log "No headers found."
 				    body="$response"
 			    fi
 
