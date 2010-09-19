@@ -68,6 +68,16 @@ add_header() {
     echo "$1" | egrep -i "^$2:" &>/dev/null || echo -en "$2: $3\r\n"
 }
 
+list_dir() {
+                    echo "<table><tr><th>"
+                    IFS=$(echo -en "\n\b")
+                    for file in $(ls -1aF "$path" | grep -v "^./$" | sed 's#\*##g'); do
+                        echo "<tr><td valign="top"><a href=\"$file\">$file</a></td>"
+                    done
+                    unset IFS
+                    echo "</th></tr></table>"
+}
+
 response() {
 	code="$1"
         path="$(echo $2 | sed 's#%20#\ #g')"
@@ -77,14 +87,10 @@ response() {
 		200*)
 	        mime=$(get_mime "$path")
 		if [ -d "$path" ]; then 
-	            echo -e "Content-Type: "$mime"; charset=utf-8\n"
-                    echo "<table><tr><th>"
-                    IFS=$(echo -en "\n\b")
-                    for file in $(ls -1aF "$path" | grep -v "^./$" | sed 's#\*##g'); do
-                        echo "<tr><td valign="top"><a href=\"$file\">$file</a></td>"
-                    done
-                    unset IFS
-                    echo "</th></tr></table>"
+		    body=$(list_dir "$path")
+	            echo -en "Content-Type: $mime; charset=utf-8\r\n"
+		    echo -en "Content-Length: $(echo "$body" | wc -c)\r\n\r\n"
+		    echo "$body"
 	       elif [ -x "$path" ] && [[ "$path" =~ \.cgi$ ]]; then
 			    response="$(fork_with_timeout "$path")"
 			    if echo "$clean" | egrep '^\r*$' &>/dev/null; then
