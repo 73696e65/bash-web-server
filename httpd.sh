@@ -157,13 +157,20 @@ Content-Type:text/html; charset=utf-8
 }
 
 read method url http_version
+host="?"
+while read header; do
+	header="$(echo "$header" | tr -d '\r')"
+	[ "$header" = "" ] && break
+
+	[[ "$header" =~ ^[hH][oO][sS][tT] ]] && host="${header#*:}"
+done
 
 case "$(upperx $http_version)" in
   HTTP/1.0)
   ;;
 
   HTTP/1.1)
-    read host
+	log "Host: $host"
   ;;
 
   *)
