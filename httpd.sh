@@ -67,13 +67,17 @@ add_header() {
 }
 
 list_dir() {
+set -x
                     echo "<table><tr><th>"
                     IFS=$(echo -en "\n\b")
-                    for file in $(ls -1aF "$path" | grep -v "^./$" | sed 's#\*##g'); do
-                        echo "<tr><td valign="top"><a href=\"$file\">$file</a></td>"
+                    #for file in $(ls -1aF "$path" | grep -v "^./$" | sed 's#\*##g'); do
+                    for file in $(ls -1a "$path" | grep -v "^\.$"); do
+                        [ -d "$path/$file" ] && file="$file/"
+                        echo "<tr><td valign="top"><a href=\""$file"\">"$file"</a></td>"
                     done
                     unset IFS
                     echo "</th></tr></table>"
+set +x
 }
 
 response() {
@@ -109,7 +113,7 @@ response() {
 			    echo "$headers"
 			    cat $tmpfile && rm -f "$tmpfile"
 		else
-			echo -en "Content-Length: $(wc -c < "$tmpfile")\r\n";
+			echo -en "Content-Length: $(wc -c < "$path")\r\n";
 			echo -en "Connection: close\r\n"
 			echo -en "Content-Type: $mime\r\n\r\n";
 			cat "$path" # FIXME: directory traversal?
