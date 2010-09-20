@@ -4,12 +4,13 @@
 
 ### global variables that contain the configuration options ###
 basedir=$PWD/webroot
+logfile="/tmp/httpd.log"
 timeout=4
 ###############################################################
 
 log() {
 	# use tail -f /tmp/httpd.log
-	echo $@ >> /tmp/httpd.log
+	echo $@ >> "$logfile"
 }
 
 process_alive() {
@@ -26,7 +27,7 @@ kill_tree() {
 fork_with_timeout() {
     log "running $@"
     iters=0
-    $@ &
+    $@ 2>> $logfile &
     pid=$!
     log "forked CGI: $pid, waiting"
     while process_alive $pid; do 
@@ -39,7 +40,7 @@ fork_with_timeout() {
 	    iters=$((iters+1))
     done
     log "Killer process on $pid exiting"
-    wait $pid && echo $?
+    wait $pid # && echo $?
 }
 
 upperx() {
@@ -80,13 +81,14 @@ list_dir() {
 
 response() {
 	code="$1"
-        path="$(echo $2 | sed -e 's#\ #%20#g')" # -e 's#%3[dD]#<#g' -e 's#%3[eE]#>#g')"
-        echo "$(upperx $http_version) $code";
+        path="$(echo $2 | sed -e 's#\ #%20#g')"
+        [[ "$code" != "200 OK" ]] && echo "$(upperx $http_version) $code";
 	
 	case "$code" in
 		200*)
 	        mime=$(get_mime "$path")
 		if [ -d "$path" ]; then 
+                    echo "$(upperx $http_version) $code";
                     tmpfile=$(mktemp)
                     echo $(list_dir "$path") > "$tmpfile"
 		    echo -en "Content-Type: $mime; charset=utf-8\r\n"
@@ -95,22 +97,33 @@ response() {
 		    cat "$tmpfile" && rm -f "$tmpfile"
 	       elif [ -x "$path" ] && [[ "$path" =~ \.cgi$ ]]; then
                             tmpfile=$(mktemp)
-			    echo "$(fork_with_timeout "$path"  || (log "Status from fork: $?"))" > "$tmpfile"
-			    if cat "$tmpfile" | tr -d '\r' | egrep '^$' &>/dev/null; then
-				    log "Headers found."
-				    headers="$(cat "$tmpfile" | sed -rn '1,/^\r*$/p')"
-				    sed -ri '1,/^\r*$/d' "$tmpfile"
-			    else
-				    log "No headers found."
-			    fi
+                            cgiret=$(mktemp)
+			    echo "$(fork_with_timeout "$path" ; echo "$?" > "$cgiret")" > "$tmpfile"
+                            if [ "$(cat $cgiret)" != "0" ]; then
+                                code="500 Internal Server Error"
+                                rm -f $cgiret
+                                echo "$(upperx $http_version) $code";
+                                print_500
+                            else
+                                rm -f $cgiret
+                                echo "$(upperx $http_version) $code";
+			        if cat "$tmpfile" | tr -d '\r' | egrep '^$' &>/dev/null; then
+			                log "Headers found."
+				        headers="$(cat "$tmpfile" | sed -rn '1,/^\r*$/p')"
+				        sed -ri '1,/^\r*$/d' "$tmpfile"
+			        else
+			                log "No headers found."
+			        fi
 
-			    add_header "$headers" "Content-Type"   "text/plain; charset=UTF-8"
-			    add_header "$headers" "Content-Length" "$(wc -c < "$tmpfile")"
-			    add_header "$headers" "Connection" "close"
+			        add_header "$headers" "Content-Type"   "text/plain; charset=UTF-8"
+			        add_header "$headers" "Content-Length" "$(wc -c < "$tmpfile")"
+			        add_header "$headers" "Connection" "close"
 
-			    echo "$headers"
-			    cat $tmpfile && rm -f "$tmpfile"
+			        echo "$headers"
+			        cat $tmpfile && rm -f "$tmpfile"
+                            fi
 		else
+                        echo "$(upperx $http_version) $code";
 			echo -en "Content-Length: $(wc -c < "$path")\r\n";
 			echo -en "Connection: close\r\n"
 			echo -en "Content-Type: $mime\r\n\r\n";
@@ -119,6 +132,21 @@ response() {
 		;;
 
 		403*)
+                    print_403
+		;;
+            	404*)
+                    print_404
+		;;
+                501*)
+                    print_501
+                ;;  
+	        *)
+                    print_500
+                ;;
+	esac
+}
+
+print_403() {
 ### 403 forbidden ###
 cat << 403
 Content-Type:text/html; charset=utf-8
@@ -132,8 +160,9 @@ Connection: close
 on this server.</p>
 </body></html>
 403
-		;;
-            	404*)
+}
+
+print_404() {
 ### 404 not found ###
 cat << 404
 Content-Type:text/html; charset=utf-8
@@ -146,20 +175,10 @@ Connection: close
 <p>The requested URL $url was not found on this server.</p>
 </body></html>
 404
-		;;
-                501*)
-# 501 Not Implemented
-cat << 501
-Content-Type:text/html; charset=utf-8
-<html><head>
-<title>501 Not implemented</title>
-</head><body>
-<h1>Not Implemented</h1>
-<p>Method not implemented or other misconfiguration occured.</p>
-</body></html>
-501
-                ;;  
-	        *)
+}
+
+print_500() {
+# 500 Server Error
 cat << 500
 Content-Type:text/html; charset=utf-8
 Connection: close
@@ -171,8 +190,19 @@ Connection: close
 <p>Method not implemented or other misconfiguration occured.</p>
 </body></html>
 500
-	;;
-	esac
+}
+
+print_501() {
+# 501 Not Implemented
+cat << 501
+Content-Type:text/html; charset=utf-8
+<html><head>
+<title>501 Not implemented</title>
+</head><body>
+<h1>Not Implemented</h1>
+<p>Method not implemented or other misconfiguration occured.</p>
+</body></html>
+501
 }
 
 url_escape() {
