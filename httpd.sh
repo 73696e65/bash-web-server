@@ -39,6 +39,7 @@ fork_with_timeout() {
 	    iters=$((iters+1))
     done
     log "Killer process on $pid exiting"
+    wait $pid && echo $?
 }
 
 upperx() {
@@ -94,7 +95,7 @@ response() {
 		    cat "$tmpfile" && rm -f "$tmpfile"
 	       elif [ -x "$path" ] && [[ "$path" =~ \.cgi$ ]]; then
                             tmpfile=$(mktemp)
-			    echo "$(fork_with_timeout "$path")" > "$tmpfile"
+			    echo "$(fork_with_timeout "$path"  || (log "Status from fork: $?"))" > "$tmpfile"
 			    if cat "$tmpfile" | tr -d '\r' | egrep '^$' &>/dev/null; then
 				    log "Headers found."
 				    headers="$(cat "$tmpfile" | sed -rn '1,/^\r*$/p')"
