@@ -3,9 +3,9 @@
 # usage: ncat -l 8080 -e ./httpd.sh
 
 ### global variables that contain the configuration options ###
-basedir=$PWD/webroot
+basedir="$PWD/webroot"
 logfile="/tmp/httpd.log"
-timeout=4
+timeout="10"
 ###############################################################
 
 log() {
